@@ -29,7 +29,7 @@
 #include "brewtarget.h"
 
 FermentableEditor::FermentableEditor( QWidget* parent )
-        : QDialog(parent), obsFerm(0)
+        : QDialog(parent), obsFerm(nullptr)
 {
    setupUi(this);
 
@@ -38,34 +38,30 @@ FermentableEditor::FermentableEditor( QWidget* parent )
 
 }
 
-void FermentableEditor::setFermentable( Fermentable* f )
+void FermentableEditor::setFermentable( Fermentable* newFerm )
 {
-   if( obsFerm )
-      disconnect( obsFerm, 0, this, 0 );
-
-   obsFerm = f;
-   if( obsFerm )
+   if(newFerm)
    {
-      connect( obsFerm, SIGNAL(changed(QMetaProperty,QVariant)), this, SLOT(changed(QMetaProperty,QVariant)) );
+      obsFerm = newFerm;
       showChanges();
    }
 }
 
 void FermentableEditor::save()
 {
-   if( obsFerm == 0 )
+   if( !obsFerm )
    {
       setVisible(false);
       return;
    }
 
-   obsFerm->setName(lineEdit_name->text());
+   obsFerm->setName(lineEdit_name->text(), obsFerm->cacheOnly());
 
    // NOTE: the following assumes that Fermentable::Type is enumerated in the same
    // order as the combobox.
    obsFerm->setType( static_cast<Fermentable::Type>(comboBox_type->currentIndex()) );
+
    obsFerm->setAmount_kg(lineEdit_amount->toSI());
-   obsFerm->setInventoryAmount(lineEdit_inventory->toSI());
    obsFerm->setYield_pct(lineEdit_yield->toSI());
    obsFerm->setColor_srm(lineEdit_color->toSI());
    obsFerm->setAddAfterBoil( (checkBox_addAfterBoil->checkState() == Qt::Checked)? true : false );
@@ -81,29 +77,30 @@ void FermentableEditor::save()
    obsFerm->setIbuGalPerLb( lineEdit_ibuGalPerLb->toSI() );
    obsFerm->setNotes( textEdit_notes->toPlainText() );
 
+   if ( obsFerm->cacheOnly() ) {
+      Database::instance().insertFermentable(obsFerm);
+   }
+
+   // I could do this in the database code, but it makes sense to me here.
+   obsFerm->setInventoryAmount(lineEdit_inventory->toSI());
+
    setVisible(false);
 }
 
 void FermentableEditor::clearAndClose()
 {
-   setFermentable(0);
+   setFermentable(nullptr);
    setVisible(false); // Hide the window.
-}
-
-void FermentableEditor::changed(QMetaProperty prop, QVariant /*val*/)
-{
-   if( sender() == obsFerm )
-      showChanges(&prop);
 }
 
 void FermentableEditor::showChanges(QMetaProperty* metaProp)
 {
-   if( obsFerm == 0 )
+   if( !obsFerm )
       return;
 
    QString propName;
    bool updateAll = false;
-   if( metaProp == 0 )
+   if( metaProp == nullptr )
       updateAll = true;
    else
    {

@@ -27,35 +27,13 @@
 #include <QDebug>
 #include "fermentable.h"
 #include "brewtarget.h"
+#include "database.h"
+
+#include "TableSchemaConst.h"
+#include "FermentableSchema.h"
+#define SUPER Ingredient
 
 QStringList Fermentable::types = QStringList() << "Grain" << "Sugar" << "Extract" << "Dry Extract" << "Adjunct";
-QHash<QString,QString> Fermentable::tagToProp = Fermentable::tagToPropHash();
-
-QHash<QString,QString> Fermentable::tagToPropHash()
-{
-   QHash<QString,QString> propHash;
-   
-   propHash["NAME"] = "name";
-   // NOTE: since type is actually stored as a string (not integer), have to handle separately.
-   //propHash["TYPE"] = "type";
-   propHash["AMOUNT"] = "amount_kg";
-   propHash["INVENTORY"] = "inventory";
-   propHash["YIELD"] = "yield_pct";
-   propHash["COLOR"] = "color_srm";
-   propHash["ADD_AFTER_BOIL"] = "addAfterBoil";
-   propHash["ORIGIN"] = "origin";
-   propHash["SUPPLIER"] = "supplier";
-   propHash["NOTES"] = "notes";
-   propHash["COARSE_FINE_DIFF"] = "coarseFineDiff_pct";
-   propHash["MOISTURE"] = "moisture_pct";
-   propHash["DIASTATIC_POWER"] = "diastaticPower_lintner";
-   propHash["PROTEIN"] = "protein_pct";
-   propHash["MAX_IN_BATCH"] = "maxInBatch_pct";
-   propHash["RECOMMEND_MASH"] = "recommendMash";
-   propHash["IS_MASHED"] = "isMashed";
-   propHash["IBU_GAL_PER_LB"] = "ibuGalPerLb";
-   return propHash;
-}
 
 bool operator<(Fermentable &f1, Fermentable &f2)
 {
@@ -67,19 +45,152 @@ bool operator==(Fermentable &f1, Fermentable &f2)
    return f1.name() == f2.name();
 }
 
-Fermentable::Fermentable()
-   : BeerXMLElement()
+QString Fermentable::classNameStr()
+{
+   static const QString name("Fermentable");
+   return name;
+}
+
+Fermentable::Fermentable(QString name, bool cache)
+   : Ingredient(Brewtarget::FERMTABLE, -1, name, true),
+     m_typeStr(QString()),
+     m_type(static_cast<Fermentable::Type>(0)),
+     m_amountKg(0.0),
+     m_yieldPct(0.0),
+     m_colorSrm(0.0),
+     m_isAfterBoil(false),
+     m_origin(QString()),
+     m_supplier(QString()),
+     m_notes(QString()),
+     m_coarseFineDiff(0.0),
+     m_moisturePct(0.0),
+     m_diastaticPower(0.0),
+     m_proteinPct(0.0),
+     m_maxInBatchPct(100.0),
+     m_recommendMash(false),
+     m_ibuGalPerLb(0.0),
+     m_inventory(-1.0),
+     m_inventory_id(0),
+     m_isMashed(false),
+     m_cacheOnly(cache)
 {
 }
 
-Fermentable::Fermentable( Fermentable const& other )
-        : BeerXMLElement( other )
+Fermentable::Fermentable(Brewtarget::DBTable table, int key)
+   : Ingredient(table, key, QString(), true),
+     m_typeStr(QString()),
+     m_type(static_cast<Fermentable::Type>(0)),
+     m_amountKg(0.0),
+     m_yieldPct(0.0),
+     m_colorSrm(0.0),
+     m_isAfterBoil(false),
+     m_origin(QString()),
+     m_supplier(QString()),
+     m_notes(QString()),
+     m_coarseFineDiff(0.0),
+     m_moisturePct(0.0),
+     m_diastaticPower(0.0),
+     m_proteinPct(0.0),
+     m_maxInBatchPct(0.0),
+     m_recommendMash(true),
+     m_ibuGalPerLb(0.0),
+     m_inventory(-1.0),
+     m_inventory_id(0),
+     m_isMashed(true),
+     m_cacheOnly(false)
 {
 }
 
-// Get
-const Fermentable::Type Fermentable::type() const { return static_cast<Fermentable::Type>(types.indexOf(get("ftype").toString())); }
-const Fermentable::AdditionMethod Fermentable::additionMethod() const
+Fermentable::Fermentable(Brewtarget::DBTable table, int key, QSqlRecord rec)
+   : Ingredient(table, key, rec.value(kcolName).toString(), rec.value(kcolDisplay).toBool(), rec.value(kcolFolder).toString()),
+     m_typeStr(rec.value(kcolFermType).toString()),
+     m_type(static_cast<Fermentable::Type>(types.indexOf(m_typeStr))),
+     m_amountKg(rec.value(kcolFermAmount).toDouble()),
+     m_yieldPct(rec.value(kcolFermYield).toDouble()),
+     m_colorSrm(rec.value(kcolFermColor).toDouble()),
+     m_isAfterBoil(rec.value(kcolFermAddAfterBoil).toBool()),
+     m_origin(rec.value(kcolFermOrigin).toString()),
+     m_supplier(rec.value(kcolFermSupplier).toString()),
+     m_notes(rec.value(kcolNotes).toString()),
+     m_coarseFineDiff(rec.value(kcolFermCoarseFineDiff).toDouble()),
+     m_moisturePct(rec.value(kcolFermMoisture).toDouble()),
+     m_diastaticPower(rec.value(kcolFermDiastaticPower).toDouble()),
+     m_proteinPct(rec.value(kcolFermProtein).toDouble()),
+     m_maxInBatchPct(rec.value(kcolFermMaxInBatch).toDouble()),
+     m_recommendMash(rec.value(kcolFermRecommendMash).toBool()),
+     m_ibuGalPerLb(rec.value(kcolFermIBUGalPerLb).toDouble()),
+     m_inventory(-1.0),
+     m_inventory_id(rec.value(kcolInventoryId).toInt()),
+     m_isMashed(rec.value(kcolFermIsMashed).toBool()),
+     m_cacheOnly(false)
+{
+}
+
+Fermentable::Fermentable( Fermentable &other )
+        : Ingredient( other ),
+     m_typeStr(other.m_typeStr),
+     m_type(other.m_type),
+     m_amountKg(other.m_amountKg),
+     m_yieldPct(other.m_yieldPct),
+     m_colorSrm(other.m_colorSrm),
+     m_isAfterBoil(other.m_isAfterBoil),
+     m_origin(other.m_origin),
+     m_supplier(other.m_supplier),
+     m_notes(other.m_notes),
+     m_coarseFineDiff(other.m_coarseFineDiff),
+     m_moisturePct(other.m_moisturePct),
+     m_diastaticPower(other.m_diastaticPower),
+     m_proteinPct(other.m_proteinPct),
+     m_maxInBatchPct(other.m_maxInBatchPct),
+     m_recommendMash(other.m_recommendMash),
+     m_ibuGalPerLb(other.m_ibuGalPerLb),
+     m_inventory(other.m_inventory),
+     m_inventory_id(other.m_inventory_id),
+     m_isMashed(other.m_isMashed),
+     m_cacheOnly(other.m_cacheOnly)
+{
+   setType( other.type() );
+   setAmount_kg( other.amount_kg() );
+   setInventoryAmount( other.inventory() );
+   setYield_pct( other.yield_pct() );
+   setColor_srm( other.color_srm() );
+   setAddAfterBoil( other.addAfterBoil() );
+   setOrigin( other.origin() );
+   setSupplier( other.supplier() );
+   setNotes( other.notes() );
+   setCoarseFineDiff_pct( other.coarseFineDiff_pct() );
+   setMoisture_pct( other.moisture_pct() );
+   setDiastaticPower_lintner( other.diastaticPower_lintner() );
+   setProtein_pct( other.protein_pct() );
+   setMaxInBatch_pct( other.maxInBatch_pct() );
+   setRecommendMash( other.recommendMash() );
+   setInventoryAmount( other.inventory() );
+   setInventoryId( other.inventoryId() );
+   setIbuGalPerLb( other.ibuGalPerLb() );
+   setIsMashed(other.isMashed());
+}
+
+// Gets
+
+Fermentable::Type Fermentable::type() const { return m_type; }
+double Fermentable::amount_kg() const { return m_amountKg; }
+double Fermentable::yield_pct() const { return m_yieldPct; }
+double Fermentable::color_srm() const { return m_colorSrm; }
+bool Fermentable::addAfterBoil() const { return m_isAfterBoil; }
+const QString Fermentable::origin() const { return m_origin; }
+const QString Fermentable::supplier() const { return m_supplier; }
+const QString Fermentable::notes() const { return m_notes; }
+double Fermentable::coarseFineDiff_pct() const { return m_coarseFineDiff; }
+double Fermentable::moisture_pct() const { return m_moisturePct; }
+double Fermentable::diastaticPower_lintner() const { return m_diastaticPower; }
+double Fermentable::protein_pct() const { return m_proteinPct; }
+double Fermentable::maxInBatch_pct() const { return m_maxInBatchPct; }
+bool Fermentable::recommendMash() const { return m_recommendMash; }
+double Fermentable::ibuGalPerLb() const { return m_ibuGalPerLb; }
+bool Fermentable::isMashed() const { return m_isMashed; }
+bool Fermentable::cacheOnly() const { return m_cacheOnly; }
+
+Fermentable::AdditionMethod Fermentable::additionMethod() const
 {
    Fermentable::AdditionMethod additionMethod;
    if(isMashed())
@@ -93,7 +204,8 @@ const Fermentable::AdditionMethod Fermentable::additionMethod() const
    }
    return additionMethod;
 }
-const Fermentable::AdditionTime Fermentable::additionTime() const
+
+Fermentable::AdditionTime Fermentable::additionTime() const
 {
    Fermentable::AdditionTime additionTime;
    if(addAfterBoil())
@@ -103,14 +215,23 @@ const Fermentable::AdditionTime Fermentable::additionTime() const
 
    return additionTime;
 }
+
 const QString Fermentable::typeString() const
 {
+   if ( m_type > types.length()) {
+      return "";
+   }
    return types.at(type());
 }
+
 const QString Fermentable::typeStringTr() const
 {
    static QStringList typesTr = QStringList () << QObject::tr("Grain") << QObject::tr("Sugar") << QObject::tr("Extract") << QObject::tr("Dry Extract") << QObject::tr("Adjunct");
-   return typesTr.at(type());
+   if ( m_type > typesTr.length() || m_type < 0 ) {
+      return "";
+   }
+
+   return typesTr.at(m_type);
 }
 
 const QString Fermentable::additionMethodStringTr() const
@@ -141,53 +262,108 @@ const QString Fermentable::additionTimeStringTr() const
     return retString;
 }
 
-double Fermentable::amount_kg()              const { return get("amount").toDouble(); }
-double Fermentable::yield_pct()              const { return get("yield").toDouble(); }
-double Fermentable::color_srm()              const { return get("color").toDouble(); }
-double Fermentable::coarseFineDiff_pct()     const { return get("coarse_fine_diff").toDouble(); }
-double Fermentable::moisture_pct()           const { return get("moisture").toDouble(); }
-double Fermentable::diastaticPower_lintner() const { return get("diastatic_power").toDouble(); }
-double Fermentable::protein_pct()            const { return get("protein").toDouble(); }
-double Fermentable::maxInBatch_pct()         const { return get("max_in_batch").toDouble(); }
-double Fermentable::ibuGalPerLb()            const { return get("ibu_gal_per_lb").toDouble(); }
-
-// inventory must be handled separately, to my great annoyance
-double Fermentable::inventory() const 
-{ 
-   return getInventory("amount").toDouble();
+bool Fermentable::isExtract() const
+{
+   return ((type() == Extract) || (type() == Dry_Extract));
 }
 
-bool Fermentable::addAfterBoil() const { return get("add_after_boil").toBool(); }
-const QString Fermentable::origin() const { return get("origin").toString(); }
-const QString Fermentable::supplier() const { return get("supplier").toString(); }
-const QString Fermentable::notes() const { return get("notes").toString(); }
-bool Fermentable::recommendMash() const { return get("recommend_mash").toBool(); }
-bool Fermentable::isMashed() const { return get("is_mashed").toBool(); }
-bool Fermentable::isExtract() { return ((type() == Extract) || (type() == Dry_Extract)); }
-bool Fermentable::isSugar() { return (type() == Sugar); }
-bool Fermentable::isValidType( const QString& str ) { return (types.indexOf(str) >= 0); }
+bool Fermentable::isSugar() const
+{
+   return (type() == Sugar);
+}
 
-void Fermentable::setType( Type t ) { set("type", "ftype", types.at(t)); }
-void Fermentable::setAdditionMethod( Fermentable::AdditionMethod m ) { setIsMashed(m == Fermentable::Mashed); }
-void Fermentable::setAdditionTime( Fermentable::AdditionTime t ) { setAddAfterBoil(t == Fermentable::Late ); }
-void Fermentable::setAddAfterBoil( bool b ) { set("addAfterBoil", "add_after_boil", b); }
-void Fermentable::setOrigin( const QString& str ) { set("origin","origin",str);}
-void Fermentable::setSupplier( const QString& str) { set("supplier","supplier",str);}
-void Fermentable::setNotes( const QString& str ) { set("notes","notes",str);}
-void Fermentable::setRecommendMash( bool b ) { set("recommendMash","recommend_mash",b);}
-void Fermentable::setIsMashed(bool var) { set("isMashed","is_mashed",var); }
-void Fermentable::setIbuGalPerLb( double num ) { set("ibuGalPerLb","ibu_gal_per_lb",num);}
+bool Fermentable::isValidType( const QString& str )
+{
+   return (types.indexOf(str) >= 0);
+}
+
+
+// Sets
+void Fermentable::setType( Type t )
+{
+   m_type = t;
+   if ( ! m_cacheOnly ) {
+      setEasy(kpropType, types.at(t));
+   }
+}
+
+void Fermentable::setAdditionMethod( Fermentable::AdditionMethod m )
+{
+   setIsMashed(m == Fermentable::Mashed);
+}
+
+void Fermentable::setAdditionTime( Fermentable::AdditionTime t )
+{
+   setAddAfterBoil(t == Fermentable::Late);
+}
+
+void Fermentable::setAddAfterBoil( bool b )
+{
+   m_isAfterBoil = b;
+   if ( ! m_cacheOnly ) {
+      setEasy(kpropAddAfterBoil, b);
+   }
+}
+
+void Fermentable::setOrigin( const QString& str )
+{
+   m_origin = str;
+   if ( ! m_cacheOnly ) {
+      setEasy( kpropOrigin, str);
+   }
+}
+
+void Fermentable::setSupplier( const QString& str)
+{
+   m_supplier = str;
+   if ( ! m_cacheOnly ) {
+      setEasy( kpropSupplier, str);
+   }
+}
+
+void Fermentable::setNotes( const QString& str )
+{
+   m_notes = str;
+   if ( ! m_cacheOnly ) {
+      setEasy( kpropNotes, str);
+   }
+}
+
+void Fermentable::setRecommendMash( bool b )
+{
+   m_recommendMash = b;
+   if ( ! m_cacheOnly ) {
+      setEasy( kpropRecommendMash, b);
+   }
+}
+
+void Fermentable::setIsMashed(bool var)
+{
+   m_isMashed = var;
+   if ( ! m_cacheOnly ) {
+      setEasy( kpropIsMashed, var);
+   }
+}
+
+void Fermentable::setIbuGalPerLb( double num )
+{
+   m_ibuGalPerLb = num;
+   if ( ! m_cacheOnly ) {
+      setEasy( kpropIBUGalPerLb, num);
+   }
+}
 
 double Fermentable::equivSucrose_kg() const
 {
    double ret = amount_kg() * yield_pct() * (1.0-moisture_pct()/100.0) / 100.0;
-   
+
    // If this is a steeped grain...
    if( type() == Grain && !isMashed() )
       return 0.60 * ret; // Reduce the yield by 60%.
    else
       return ret;
 }
+
 void Fermentable::setAmount_kg( double num )
 {
    if( num < 0.0 )
@@ -197,32 +373,69 @@ void Fermentable::setAmount_kg( double num )
    }
    else
    {
-      set("amount_kg", "amount", num);
+      m_amountKg = num;
+      if ( ! m_cacheOnly ) {
+         setEasy( kpropAmountKg, num);
+      }
    }
 }
+
 void Fermentable::setInventoryAmount( double num )
 {
-   if( num < 0.0 )
-   {
+   if( num < 0.0 ) {
       Brewtarget::logW( QString("Fermentable: negative inventory: %1").arg(num) );
       return;
    }
    else
    {
-      setInventory("inventory", "amount", num);
+      m_inventory = num;
+      if ( ! m_cacheOnly )
+         setInventory(num,m_inventory_id);
    }
 }
+
+void Fermentable::setInventoryId( int key )
+{
+   if( key < 1 ) {
+      Brewtarget::logW( QString("Fermentable: bad inventory id: %1").arg(key) );
+      return;
+   }
+   else
+   {
+      m_inventory_id = key;
+      if ( ! m_cacheOnly )
+         setEasy(kpropInventoryId,key);
+   }
+}
+
+double Fermentable::inventory()
+{
+   if ( m_inventory < 0 ) {
+      m_inventory = getInventory(kpropInventory).toDouble();
+   }
+   return m_inventory;
+}
+
+int Fermentable::inventoryId()
+{
+   return m_inventory_id;
+}
+
 void Fermentable::setYield_pct( double num )
 {
    if( num >= 0.0 && num <= 100.0 )
    {
-      set("yield_pct", "yield", num);
+      m_yieldPct = num;
+      if ( ! m_cacheOnly ) {
+         setEasy( kpropYield, num);
+      }
    }
    else
    {
       Brewtarget::logW( QString("Fermentable: 0 < yield < 100: %1").arg(num) );
    }
 }
+
 void Fermentable::setColor_srm( double num )
 {
    if( num < 0.0 )
@@ -232,31 +445,43 @@ void Fermentable::setColor_srm( double num )
    }
    else
    {
-      set("color_srm", "color", num);
+      m_colorSrm = num;
+      if ( ! m_cacheOnly ) {
+         setEasy( kpropColor, num);
+      }
    }
 }
+
 void Fermentable::setCoarseFineDiff_pct( double num )
 {
    if( num >= 0.0 && num <= 100.0 )
    {
-      set("coarseFineDiff_pct", "coarse_fine_diff", num);
+      m_coarseFineDiff = num;
+      if ( ! m_cacheOnly ) {
+         setEasy( kpropCoarseFineDiff, num);
+      }
    }
    else
    {
       Brewtarget::logW( QString("Fermentable: 0 < coarsefinediff < 100: %1").arg(num) );
    }
 }
+
 void Fermentable::setMoisture_pct( double num )
 {
    if( num >= 0.0 && num <= 100.0 )
    {
-      set("moisture_pct", "moisture", num);
+      m_moisturePct = num;
+      if ( ! m_cacheOnly ) {
+         setEasy( kpropMoisture, num);
+      }
    }
    else
    {
       Brewtarget::logW( QString("Fermentable: 0 < moisture < 100: %1").arg(num) );
    }
 }
+
 void Fermentable::setDiastaticPower_lintner( double num )
 {
    if( num < 0.0 )
@@ -266,29 +491,42 @@ void Fermentable::setDiastaticPower_lintner( double num )
    }
    else
    {
-      set("diastaticPower_lintner", "diastatic_power", num);
+      m_diastaticPower = num;
+      if ( ! m_cacheOnly ) {
+         setEasy( kpropDiastaticPower, num);
+      }
    }
 }
+
 void Fermentable::setProtein_pct( double num )
 {
    if( num >= 0.0 && num <= 100.0 )
    {
-      set("protein_pct", "protein", num);
+      m_proteinPct = num;
+      if ( ! m_cacheOnly ) {
+         setEasy( kpropProtein, num);
+      }
    }
    else
    {
       Brewtarget::logW( QString("Fermentable: 0 < protein < 100: %1").arg(num) );
    }
 }
+
 void Fermentable::setMaxInBatch_pct( double num )
 {
    if( num >= 0.0 && num <= 100.0 )
    {
-      set("maxInBatch_pct", "max_in_batch", num);
+      m_maxInBatchPct = num;
+      if ( ! m_cacheOnly ) {
+         setEasy( kpropMaxInBatch, num);
+      }
    }
    else
    {
       Brewtarget::logW( QString("Fermentable: 0 < maxinbatch < 100: %1").arg(num) );
    }
 }
+
+void Fermentable::setCacheOnly( bool cache ) { m_cacheOnly = cache; }
 

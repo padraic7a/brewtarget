@@ -29,22 +29,8 @@
 #include <QDomText>
 #include <QObject>
 
-QHash<QString,QString> Mash::tagToProp = Mash::tagToPropHash();
-
-QHash<QString,QString> Mash::tagToPropHash()
-{
-   QHash<QString,QString> propHash;
-   propHash["NAME"] = "name";
-   propHash["GRAIN_TEMP"] = "grainTemp_c";
-   propHash["NOTES"] = "notes";
-   propHash["TUN_TEMP"] = "tunTemp_c";
-   propHash["SPARGE_TEMP"] = "spargeTemp_c";
-   propHash["PH"] = "ph";
-   propHash["TUN_WEIGHT"] = "tunWeight_kg";
-   propHash["TUN_SPECIFIC_HEAT"] = "tunSpecificHeat_calGC";
-   propHash["EQUIP_ADJUST"] = "equipAdjust";
-   return propHash;
-}
+#include "TableSchemaConst.h"
+#include "MashSchema.h"
 
 bool operator<(Mash &m1, Mash &m2)
 {
@@ -56,16 +42,93 @@ bool operator==(Mash &m1, Mash &m2)
    return m1.name() == m2.name();
 }
 
-Mash::Mash()
-   : BeerXMLElement()
+QString Mash::classNameStr()
+{
+   static const QString name("Mash");
+   return name;
+}
+
+Mash::Mash(Brewtarget::DBTable table, int key)
+   : Ingredient(table, key, QString(), true),
+     m_grainTemp_c(0.0),
+     m_notes(QString()),
+     m_tunTemp_c(0.0),
+     m_spargeTemp_c(0.0),
+     m_ph(0.0),
+     m_tunWeight_kg(0.0),
+     m_tunSpecificHeat_calGC(0.0),
+     m_equipAdjust(true),
+     m_cacheOnly(false)
 {
 }
 
-void Mash::setGrainTemp_c( double var ) { set("grainTemp_c", "grain_temp", var); }
-void Mash::setNotes( const QString& var ) { set("notes", "notes", var); }
-void Mash::setTunTemp_c( double var ) { set("tunTemp_c", "tun_temp", var); }
-void Mash::setSpargeTemp_c( double var ) { set("spargeTemp_c", "sparge_temp", var); }
-void Mash::setEquipAdjust( bool var ) { set("equipAdjust", "equip_adjust", var); }
+Mash::Mash(QString name, bool cache)
+   : Ingredient(Brewtarget::MASHTABLE, -1, name, true),
+     m_grainTemp_c(0.0),
+     m_notes(QString()),
+     m_tunTemp_c(0.0),
+     m_spargeTemp_c(0.0),
+     m_ph(0.0),
+     m_tunWeight_kg(0.0),
+     m_tunSpecificHeat_calGC(0.0),
+     m_equipAdjust(true),
+     m_cacheOnly(cache)
+{
+}
+
+Mash::Mash(Brewtarget::DBTable table, int key, QSqlRecord rec)
+   : Ingredient(table, key, rec.value(kcolName).toString(), rec.value(kcolDisplay).toBool()),
+     m_grainTemp_c(rec.value(kcolMashGrainTemp).toDouble()),
+     m_notes(rec.value(kcolNotes).toString()),
+     m_tunTemp_c(rec.value(kcolMashTunTemp).toDouble()),
+     m_spargeTemp_c(rec.value(kcolMashSpargeTemp).toDouble()),
+     m_ph(rec.value(kcolPH).toDouble()),
+     m_tunWeight_kg(rec.value(kcolMashTunWeight).toDouble()),
+     m_tunSpecificHeat_calGC(rec.value(kcolMashTunSpecHeat).toDouble()),
+     m_equipAdjust(rec.value(kcolMashEquipAdjust).toBool()),
+     m_cacheOnly(false)
+{
+}
+
+void Mash::setGrainTemp_c( double var )
+{
+   m_grainTemp_c = var;
+   if ( ! m_cacheOnly ) {
+      setEasy(kpropGrainTemp, var);
+   }
+}
+
+void Mash::setNotes( const QString& var )
+{
+   m_notes = var;
+   if ( ! m_cacheOnly ) {
+      setEasy(kpropNotes, var);
+   }
+}
+
+void Mash::setTunTemp_c( double var )
+{
+   m_tunTemp_c = var;
+   if ( ! m_cacheOnly ) {
+      setEasy(kpropTunTemp, var);
+   }
+}
+
+void Mash::setSpargeTemp_c( double var )
+{
+   m_spargeTemp_c = var;
+   if ( ! m_cacheOnly ) {
+      setEasy(kpropSpargeTemp, var);
+   }
+}
+
+void Mash::setEquipAdjust( bool var )
+{
+   m_equipAdjust = var;
+   if ( ! m_cacheOnly ) {
+      setEasy(kpropEquipAdjust, var);
+   }
+}
 
 void Mash::setPh( double var )
 {
@@ -76,7 +139,10 @@ void Mash::setPh( double var )
    }
    else
    {
-      set("ph", "ph", var);
+      m_ph = var;
+      if ( ! m_cacheOnly ) {
+         setEasy(kpropPH, var);
+      }
    }
 }
 
@@ -89,7 +155,10 @@ void Mash::setTunWeight_kg( double var )
    }
    else
    {
-      set("tunWeight_kg", "tun_weight", var);
+      m_tunWeight_kg = var;
+      if ( ! m_cacheOnly ) {
+         setEasy(kpropTunWeight, var);
+      }
    }
 }
 
@@ -102,7 +171,10 @@ void Mash::setTunSpecificHeat_calGC( double var )
    }
    else
    {
-      set("tunSpecificHeat_calGC", "tun_specific_heat", var);
+      m_tunSpecificHeat_calGC = var;
+      if ( ! m_cacheOnly ) {
+         setEasy(kpropTunSpecHeat, var);
+      }
    }
 }
 
@@ -116,15 +188,26 @@ void Mash::removeAllMashSteps()
    emit mashStepsChanged();
 }
 
+void Mash::setCacheOnly(bool cache) { m_cacheOnly = cache; }
+
 //============================="GET" METHODS====================================
-QString Mash::notes()                const { return get("notes").toString(); }
-double Mash::grainTemp_c()           const { return get("grain_temp").toDouble(); }
-double Mash::tunTemp_c()             const { return get("tun_temp").toDouble(); }
-double Mash::spargeTemp_c()          const { return get("sparge_temp").toDouble(); }
-double Mash::ph()                    const { return get("ph").toDouble(); }
-double Mash::tunWeight_kg()          const { return get("tun_weight").toDouble(); }
-double Mash::tunSpecificHeat_calGC() const { return get("tun_specific_heat").toDouble(); }
-bool Mash::equipAdjust()             const { return get("equip_adjust").toBool(); }
+QString Mash::notes() const { return m_notes; }
+
+double Mash::grainTemp_c() const { return m_grainTemp_c; }
+
+double Mash::tunTemp_c() const { return m_tunTemp_c; }
+
+double Mash::spargeTemp_c() const { return m_spargeTemp_c; }
+
+double Mash::ph() const { return m_ph; }
+
+double Mash::tunWeight_kg() const { return m_tunWeight_kg; }
+
+double Mash::tunSpecificHeat_calGC() const { return m_tunSpecificHeat_calGC; }
+
+bool Mash::equipAdjust() const { return m_equipAdjust; }
+
+bool Mash::cacheOnly() const { return m_cacheOnly; }
 
 // === other methods ===
 double Mash::totalMashWater_l()
@@ -133,16 +216,39 @@ double Mash::totalMashWater_l()
    double waterAdded_l = 0.0;
    QList<MashStep*> steps = mashSteps();
    MashStep* step;
-   
+
    size = steps.size();
-   for( i = 0; i < size; ++i )
-   {
+   for( i = 0; i < size; ++i ) {
       step = steps[i];
-      
+
       if( step->isInfusion() )
          waterAdded_l += step->infuseAmount_l();
    }
-   
+
+   return waterAdded_l;
+}
+
+double Mash::totalInfusionAmount_l() const
+{
+   double waterAdded_l = 0.0;
+
+   foreach( MashStep* i, mashSteps() ) {
+      if( i->isInfusion() && ! i->isSparge() )
+         waterAdded_l += i->infuseAmount_l();
+   }
+
+   return waterAdded_l;
+}
+
+double Mash::totalSpargeAmount_l() const
+{
+   double waterAdded_l = 0.0;
+
+   foreach( MashStep* i, mashSteps() ) {
+      if( i->isSparge() )
+         waterAdded_l += i->infuseAmount_l();
+   }
+
    return waterAdded_l;
 }
 
@@ -162,6 +268,17 @@ double Mash::totalTime()
    return totalTime;
 }
 
+bool Mash::hasSparge() const
+{
+   foreach( MashStep* ms, mashSteps() ) {
+      if ( ms->isSparge() ) {
+         return true;
+      }
+   }
+
+   return false;
+}
+
 QList<MashStep*> Mash::mashSteps() const
 {
    return Database::instance().mashSteps(this);
@@ -173,7 +290,7 @@ void Mash::acceptMashStepChange(QMetaProperty prop, QVariant /*val*/)
    MashStep* stepSender = qobject_cast<MashStep*>(sender());
    if( stepSender == 0 )
       return;
-   
+
    // If one of our mash steps changed, our calculated properties
    // may also change, so we need to emit some signals.
    i = mashSteps().indexOf(stepSender);

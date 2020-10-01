@@ -23,37 +23,16 @@
 #include <QDomElement>
 #include <QDomText>
 #include <QObject>
+#include <QDebug>
 #include "hop.h"
 #include "brewtarget.h"
+
+#include "TableSchemaConst.h"
+#include "HopSchema.h"
 
 QStringList Hop::types = QStringList() << "Bittering" << "Aroma" << "Both";
 QStringList Hop::forms = QStringList() << "Leaf" << "Pellet" << "Plug";
 QStringList Hop::uses = QStringList() << "Mash" << "First Wort" << "Boil" << "Aroma" << "Dry Hop";
-QHash<QString,QString> Hop::tagToProp = Hop::tagToPropHash();
-
-QHash<QString,QString> Hop::tagToPropHash()
-{
-   QHash<QString,QString> propHash;
-   
-   propHash["NAME"] = "name";
-   propHash["ALPHA"] = "alpha_pct";
-   propHash["AMOUNT"] = "amount_kg";
-   propHash["INVENTORY"] = "inventory";
-   //propHash["USE"] = "use";
-   propHash["TIME"] = "time_min";
-   propHash["NOTES"] = "notes";
-   //propHash["TYPE"] = "type";
-   //propHash["FORM"] = "form";
-   propHash["BETA"] = "beta_pct";
-   propHash["HSI"] = "hsi_pct";
-   propHash["ORIGIN"] = "origin";
-   propHash["SUBSTITUTES"] = "substitutes";
-   propHash["HUMULENE"] = "humulene_pct";
-   propHash["CARYOPHYLLENE"] = "caryophyllene_pct";
-   propHash["COHUMULONE"] = "cohumulone_pct";
-   propHash["MYRCENE"] = "myrcene_pct";
-   return propHash;
-}
 
 bool operator<( Hop &h1, Hop &h2 )
 {
@@ -80,13 +59,113 @@ bool Hop::isValidForm(const QString& str)
    return (forms.indexOf(str) >= 0);
 }
 
-Hop::Hop()
-   : BeerXMLElement()
+QString Hop::classNameStr()
+{
+   static const QString name("Hop");
+   return name;
+}
+
+Hop::Hop(Brewtarget::DBTable table, int key)
+   : Ingredient(table, key, QString()),
+     m_useStr(QString()),
+     m_use(static_cast<Hop::Use>(0)),
+     m_typeStr(QString()),
+     m_type(static_cast<Hop::Type>(0)),
+     m_formStr(QString()),
+     m_form(static_cast<Hop::Form>(0)),
+     m_alpha_pct(0.0),
+     m_amount_kg(0.0),
+     m_time_min(0.0),
+     m_notes(QString()),
+     m_beta_pct(0.0),
+     m_hsi_pct(0.0),
+     m_origin(QString()),
+     m_substitutes(QString()),
+     m_humulene_pct(0.0),
+     m_caryophyllene_pct(0.0),
+     m_cohumulone_pct(0.0),
+     m_myrcene_pct(0.0),
+     m_inventory(-1.0),
+     m_inventory_id(0),
+     m_cacheOnly(false)
 {
 }
 
-Hop::Hop( Hop const& other )
-   : BeerXMLElement(other)
+Hop::Hop(QString name, bool cache)
+   : Ingredient(Brewtarget::HOPTABLE, -1, name, true),
+     m_useStr(QString()),
+     m_use(static_cast<Hop::Use>(0)),
+     m_typeStr(QString()),
+     m_type(static_cast<Hop::Type>(0)),
+     m_formStr(QString()),
+     m_form(static_cast<Hop::Form>(0)),
+     m_alpha_pct(0.0),
+     m_amount_kg(0.0),
+     m_time_min(0.0),
+     m_notes(QString()),
+     m_beta_pct(0.0),
+     m_hsi_pct(0.0),
+     m_origin(QString()),
+     m_substitutes(QString()),
+     m_humulene_pct(0.0),
+     m_caryophyllene_pct(0.0),
+     m_cohumulone_pct(0.0),
+     m_myrcene_pct(0.0),
+     m_inventory(-1.0),
+     m_inventory_id(0),
+     m_cacheOnly(cache)
+{
+}
+
+Hop::Hop(Brewtarget::DBTable table, int key, QSqlRecord rec)
+   : Ingredient(table, key, rec.value(kcolName).toString(), rec.value(kcolDisplay).toBool(), rec.value(kcolFolder).toString()),
+     m_useStr(rec.value(kcolUse).toString()),
+     m_use(static_cast<Hop::Use>(uses.indexOf(m_useStr))),
+     m_typeStr(rec.value(kcolHopType).toString()),
+     m_type(static_cast<Hop::Type>(types.indexOf(m_typeStr))),
+     m_formStr(rec.value(kcolHopForm).toString()),
+     m_form(static_cast<Hop::Form>(forms.indexOf(m_formStr))),
+     m_alpha_pct(rec.value(kcolHopAlpha).toDouble()),
+     m_amount_kg(rec.value(kcolHopAmount).toDouble()),
+     m_time_min(rec.value(kcolTime).toDouble()),
+     m_notes(rec.value(kcolNotes).toString()),
+     m_beta_pct(rec.value(kcolHopBeta).toDouble()),
+     m_hsi_pct(rec.value(kcolHopHSI).toDouble()),
+     m_origin(rec.value(kcolOrigin).toString()),
+     m_substitutes(rec.value(kcolSubstitutes).toString()),
+     m_humulene_pct(rec.value(kcolHopHumulene).toDouble()),
+     m_caryophyllene_pct(rec.value(kcolHopCaryophyllene).toDouble()),
+     m_cohumulone_pct(rec.value(kcolHopCohumulone).toDouble()),
+     m_myrcene_pct(rec.value(kcolHopMyrcene).toDouble()),
+     m_inventory(-1.0),
+     m_inventory_id(rec.value(kcolInventoryId).toInt()),
+     m_cacheOnly(false)
+{
+}
+
+Hop::Hop( Hop & other )
+   : Ingredient(other),
+     m_useStr(other.m_useStr),
+     m_use(other.m_use),
+     m_typeStr(other.m_typeStr),
+     m_type(other.m_type),
+     m_formStr(other.m_formStr),
+     m_form(other.m_form),
+     m_alpha_pct(other.m_alpha_pct),
+     m_amount_kg(other.m_amount_kg),
+     m_time_min(other.m_time_min),
+     m_notes(other.m_notes),
+     m_beta_pct(other.m_beta_pct),
+     m_hsi_pct(other.m_hsi_pct),
+     m_origin(other.m_origin),
+     m_substitutes(other.m_substitutes),
+     m_humulene_pct(other.m_humulene_pct),
+     m_caryophyllene_pct(other.m_caryophyllene_pct),
+     m_cohumulone_pct(other.m_cohumulone_pct),
+     m_myrcene_pct(other.m_myrcene_pct),
+     m_inventory(other.m_inventory),
+     m_inventory_id(other.m_inventory_id),
+     m_cacheOnly(other.m_cacheOnly)
 {
 }
 
@@ -100,7 +179,10 @@ void Hop::setAlpha_pct( double num )
    }
    else
    {
-      set("alpha_pct", "alpha", num);
+      m_alpha_pct = num;
+      if ( ! m_cacheOnly ) {
+         setEasy(kpropAlpha, num);
+      }
    }
 }
 
@@ -113,7 +195,10 @@ void Hop::setAmount_kg( double num )
    }
    else
    {
-      set("amount_kg", "amount", num);
+      m_amount_kg = num;
+      if ( ! m_cacheOnly ) {
+         setEasy(kpropAmountKg,num);
+      }
    }
 }
 
@@ -126,14 +211,30 @@ void Hop::setInventoryAmount( double num )
    }
    else
    {
-      setInventory("inventory", "amount", num);
+      m_inventory = num;
+      if ( ! m_cacheOnly ) {
+         setInventory(num,m_inventory_id);
+      }
+   }
+}
+
+void Hop::setInventoryId( int key )
+{
+   m_inventory_id = key;
+   if ( ! m_cacheOnly ) {
+      setEasy(kpropInventoryId, key);
    }
 }
 
 void Hop::setUse(Use u)
 {
-   if ( u >= 0 )
-      set("use", "use", uses.at(u));
+   if ( u < uses.size()) {
+      m_use = u;
+      m_useStr = uses.at(u);
+      if ( ! m_cacheOnly ) {
+         setEasy(kpropUse, uses.at(u));
+      }
+   }
 }
 
 void Hop::setTime_min( double num )
@@ -145,25 +246,41 @@ void Hop::setTime_min( double num )
    }
    else
    {
-      set("time_min", "time", num);
+      m_time_min = num;
+      if ( ! m_cacheOnly ) {
+         setEasy(kpropTime, num);
+      }
    }
 }
-      
+
 void Hop::setNotes( const QString& str )
 {
-   set("notes", "notes", str);
+   m_notes = str;
+   if ( ! m_cacheOnly ) {
+      setEasy(kpropNotes, str);
+   }
 }
 
 void Hop::setType(Type t)
 {
-  if ( t >= 0 )
-     set("type", "htype", types.at(t));
+  if ( t < types.size() ) {
+     m_type = t;
+     m_typeStr = types.at(t);
+     if ( ! m_cacheOnly ) {
+      setEasy(kpropType, m_typeStr);
+     }
+  }
 }
 
 void Hop::setForm( Form f )
 {
-   if ( f >= 0 )
-     set("form", "form", forms.at(f));
+   if ( f < forms.size() ) {
+      m_form = f;
+      m_formStr = forms.at(f);
+      if ( ! m_cacheOnly ) {
+         setEasy(kpropForm, m_formStr);
+      }
+   }
 }
 
 void Hop::setBeta_pct( double num )
@@ -175,7 +292,10 @@ void Hop::setBeta_pct( double num )
    }
    else
    {
-      set("beta_pct", "beta", num);
+      m_beta_pct = num;
+      if ( ! m_cacheOnly ) {
+         setEasy(kpropBeta, num);
+      }
    }
 }
 
@@ -188,18 +308,27 @@ void Hop::setHsi_pct( double num )
    }
    else
    {
-      set("hsi_pct", "hsi", num);
+      m_hsi_pct = num;
+      if ( ! m_cacheOnly ) {
+         setEasy(kpropHSI, num);
+      }
    }
 }
 
 void Hop::setOrigin( const QString& str )
 {
-   set("origin", "origin", str);
+   m_origin = str;
+   if ( ! m_cacheOnly ) {
+      setEasy(kpropOrigin, str);
+   }
 }
 
 void Hop::setSubstitutes( const QString& str )
 {
-   set("substitutes", "substitutes", str);
+   m_substitutes = str;
+   if ( ! m_cacheOnly ) {
+      setEasy(kpropSubstitutes, str);
+   }
 }
 
 void Hop::setHumulene_pct( double num )
@@ -211,7 +340,10 @@ void Hop::setHumulene_pct( double num )
    }
    else
    {
-      set("humulene_pct", "humulene", num);
+      m_humulene_pct = num;
+      if ( ! m_cacheOnly ) {
+         setEasy(kpropHumulene,num);
+      }
    }
 }
 
@@ -224,7 +356,10 @@ void Hop::setCaryophyllene_pct( double num )
    }
    else
    {
-      set("caryophyllene_pct", "caryophyllene", num);
+      m_caryophyllene_pct = num;
+      if ( ! m_cacheOnly ) {
+         setEasy(kpropCaryophyllene, num);
+      }
    }
 }
 
@@ -237,7 +372,10 @@ void Hop::setCohumulone_pct( double num )
    }
    else
    {
-      set("cohumulone_pct", "cohumulone", num);
+      m_cohumulone_pct = num;
+      if ( ! m_cacheOnly ) {
+         setEasy(kpropCohumulone, num);
+      }
    }
 }
 
@@ -250,53 +388,81 @@ void Hop::setMyrcene_pct( double num )
    }
    else
    {
-      set("myrcene_pct", "myrcene", num);
+      m_myrcene_pct = num;
+      if ( ! m_cacheOnly ) {
+         setEasy(kpropMyrcene, num);
+      }
    }
 }
 
+void Hop::setCacheOnly(bool cache) { m_cacheOnly = cache; }
+
 //============================="GET" METHODS====================================
 
-Hop::Use Hop::use() const { return static_cast<Hop::Use>(uses.indexOf(get("use").toString())); }
-const QString Hop::useString() const { return get("use").toString(); }
-Hop::Form Hop::form() const { return static_cast<Hop::Form>(forms.indexOf(get("form").toString())); }
-const QString Hop::notes() const { return get("notes").toString(); }
-Hop::Type Hop::type() const { return static_cast<Hop::Type>(types.indexOf(get("htype").toString())); }
-const QString Hop::typeString() const { return get("htype").toString(); }
-const QString Hop::formString() const { return get("form").toString(); }
-const QString Hop::origin() const { return get("origin").toString(); }
-const QString Hop::substitutes() const { return get("substitutes").toString(); }
+Hop::Use Hop::use() const { return m_use; }
+const QString Hop::useString() const { return m_useStr; }
+const QString Hop::notes() const { return m_notes; }
+Hop::Type Hop::type() const { return m_type; }
+const QString Hop::typeString() const { return m_typeStr; }
+Hop::Form Hop::form() const { return m_form; }
+const QString Hop::formString() const { return m_formStr; }
+const QString Hop::origin() const { return m_origin; }
+const QString Hop::substitutes() const { return m_substitutes; }
+double Hop::alpha_pct() const { return m_alpha_pct; }
+double Hop::amount_kg() const { return m_amount_kg; }
+double Hop::time_min() const { return m_time_min; }
+double Hop::beta_pct() const { return m_beta_pct; }
+double Hop::hsi_pct() const { return m_hsi_pct; }
+double Hop::humulene_pct() const { return m_humulene_pct; }
+double Hop::caryophyllene_pct() const { return m_caryophyllene_pct; }
+double Hop::cohumulone_pct() const { return m_cohumulone_pct; }
+double Hop::myrcene_pct() const { return m_myrcene_pct; }
+bool   Hop::cacheOnly() const { return m_cacheOnly; }
 
-double Hop::alpha_pct()          const { return get("alpha").toDouble(); }
-double Hop::amount_kg()          const { return get("amount").toDouble(); }
-double Hop::time_min()           const { return get("time").toDouble(); }
-double Hop::beta_pct()           const { return get("beta").toDouble(); }
-double Hop::hsi_pct()            const { return get("hsi").toDouble(); }
-double Hop::humulene_pct()       const { return get("humulene").toDouble(); }
-double Hop::caryophyllene_pct()  const { return get("caryophyllene").toDouble(); }
-double Hop::cohumulone_pct()     const { return get("cohumulone").toDouble(); }
-double Hop::myrcene_pct()        const { return get("myrcene").toDouble(); }
-
-// inventory still must be handled separately, and I'm still annoyed.
-double Hop::inventory() const
+// a little different in that we don't get the results in advance, but on the fly. I had to undo some const action to make this work
+double Hop::inventory()
 {
-   return getInventory("amount").toDouble();
+   if ( m_inventory < 0 ) {
+      m_inventory = getInventory(kpropInventory).toDouble();
+   }
+   return m_inventory;
+}
+
+int Hop::inventoryId() const
+{
+   return m_inventory_id;
 }
 
 const QString Hop::useStringTr() const
 {
    static QStringList usesTr = QStringList() << tr("Mash") << tr("First Wort") << tr("Boil") << tr("Aroma") << tr("Dry Hop") ;
-   return usesTr.at(use());
+   if ( m_use < usesTr.size() && m_use >= 0 ) {
+      return usesTr.at(m_use);
+   }
+   else {
+      return "";
+   }
 }
 
 const QString Hop::typeStringTr() const
 {
    static QStringList typesTr = QStringList() << tr("Bittering") << tr("Aroma") << tr("Both");
-   return typesTr.at(type());
+   if ( m_type < typesTr.size()  && m_type >= 0 ) {
+      return typesTr.at(m_type);
+   }
+   else {
+      return "";
+   }
 }
 
 const QString Hop::formStringTr() const
 {
    static QStringList formsTr = QStringList() << tr("Leaf") << tr("Pellet") << tr("Plug");
-   return formsTr.at(form());
+   if ( m_form < formsTr.size() && m_form >= 0 ) {
+      return formsTr.at(m_form);
+   }
+   else {
+      return "";
+   }
 }
 

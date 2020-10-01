@@ -71,6 +71,7 @@ SET( MACOSX_BUNDLE_COPYRIGHT "GPLv3" )
 
 #==============================Compile flags===================================
 
+set( CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Enable and enforce c++11 standards, so that we may lambda
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED_ON)
@@ -99,12 +100,12 @@ ELSE()
 ENDIF()
 
 IF( APPLE AND NOT CMAKE_OSX_ARCHITECTURES )
-   SET( CMAKE_OSX_ARCHITECTURES x86_64 ) # Build intel 64-bit binary. 
-   #SET( CMAKE_OSX_ARCHITECTURES i386 x86_64 ) # Build intel binary. 
+   SET( CMAKE_OSX_ARCHITECTURES x86_64 ) # Build intel 64-bit binary.
+   #SET( CMAKE_OSX_ARCHITECTURES i386 x86_64 ) # Build intel binary.
    #SET( CMAKE_OSX_ARCHITECTURES ppc i386 ppc64 x86_64 ) # Build universal binary.
 ENDIF()
 
-ADD_DEFINITIONS("-std=c++11")
+ADD_DEFINITIONS("-std=c++14")
 
 #============================Directories=======================================
 SET(ROOTDIR "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -220,23 +221,13 @@ IF( GZIP_CMD )
    ADD_CUSTOM_TARGET(changelog ALL DEPENDS ${CHANGELOG})
 ENDIF()
 
-#=========================Detect Debian======================================== 
-IF( EXISTS "/etc/debian_version" )
-  MESSAGE( STATUS "Debian detected..." )
-
-  IF( NOT ${CMAKE_INSTALL_PREFIX} STREQUAL "/usr" )
-    MESSAGE( WARNING "Debian system, but CMAKE_INSTALL_PREFIX != /usr" )
-    MESSAGE( WARNING "CMAKE_INSTALL_PREFIX = \"${CMAKE_INSTALL_PREFIX}\"" )
-  ENDIF()
-ENDIF()
-
 #========================Construct the directories=============================
 
 # Debian standard directories.
 IF( NOT EXEC_PREFIX )
    SET( EXEC_PREFIX ${CMAKE_INSTALL_PREFIX} )
 ENDIF()
-   
+
 SET( DATAROOTDIR "${EXEC_PREFIX}/share" )
 SET( BINDIR "${EXEC_PREFIX}/bin" )
 IF( NOT DOCDIR )
@@ -254,7 +245,7 @@ ELSEIF( WIN32 )
   #SET( DATAPATH "brewtarget-${brewtarget_VERSION_STRING}" )
   #SET( TARGETPATH "brewtarget-${brewtarget_VERSION_STRING}" )
   #SET( DOCPATH "brewtarget-${brewtarget_VERSION_STRING}/doc" )
-  
+
   # For some damn reason, for the NSIS installer,
   # the prefix needs to be empty. Also, seems that the .exe
   # needs to be in bin/. Fucking piece of shit CPack...
@@ -402,8 +393,6 @@ IF( WIN32 )
    GET_TARGET_PROPERTY(QtPrintSupport_location Qt5::PrintSupport LOCATION_${CMAKE_BUILD_TYPE})
    GET_TARGET_PROPERTY(QtSql_location Qt5::Sql LOCATION_${CMAKE_BUILD_TYPE})
    GET_TARGET_PROPERTY(QtSvg_location Qt5::Svg LOCATION_${CMAKE_BUILD_TYPE})
-   GET_TARGET_PROPERTY(QtWebKit_location Qt5::WebKit LOCATION_${CMAKE_BUILD_TYPE})
-   GET_TARGET_PROPERTY(QtWebKitWidgets_location Qt5::WebKitWidgets LOCATION_${CMAKE_BUILD_TYPE})
    GET_TARGET_PROPERTY(QtWidgets_location Qt5::Widgets LOCATION_${CMAKE_BUILD_TYPE})
    GET_TARGET_PROPERTY(QtXml_location Qt5::Xml LOCATION_${CMAKE_BUILD_TYPE})
 
@@ -412,7 +401,6 @@ IF( WIN32 )
    GET_TARGET_PROPERTY(QtQgif_location Qt5::QGifPlugin LOCATION_${CMAKE_BUILD_TYPE})
    GET_TARGET_PROPERTY(QtQico_location Qt5::QICOPlugin LOCATION_${CMAKE_BUILD_TYPE})
    GET_TARGET_PROPERTY(QtQjpeg_location Qt5::QJpegPlugin LOCATION_${CMAKE_BUILD_TYPE})
-   GET_TARGET_PROPERTY(QtQmng_location Qt5::QMngPlugin LOCATION_${CMAKE_BUILD_TYPE})
    GET_TARGET_PROPERTY(QtQsvg_location Qt5::QSvgPlugin LOCATION_${CMAKE_BUILD_TYPE})
    GET_TARGET_PROPERTY(QtQtiff_location Qt5::QTiffPlugin LOCATION_${CMAKE_BUILD_TYPE})
    GET_TARGET_PROPERTY(QtQWindows_location Qt5::QWindowsIntegrationPlugin LOCATION_${CMAKE_BUILD_TYPE})
@@ -489,7 +477,7 @@ IF(EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
   SET(CPACK_SET_DESTDIR "on")
   SET(CPACK_PACKAGING_INSTALL_PREFIX "/tmp")
   SET(CPACK_SOURCE_GENERATOR "TBZ2;")
-  SET(CPACK_SOURCE_IGNORE_FILES 
+  SET(CPACK_SOURCE_IGNORE_FILES
       "/.svn/"
       "~$"
       "/CMakeFiles/"
@@ -535,7 +523,7 @@ IF(EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
     #-----------------DEB----------------
     SET( CPACK_DEBIAN_PACKAGE_MAINTAINER "Philip G. Lee <rocketman768@gmail.com>" )
     # NOTE: Use the getdependencies script to get the dependencies!
-    SET( CPACK_DEBIAN_PACKAGE_DEPENDS "libc6 (>= 2.3.6-6~), libc6 (>= 2.1.3), libgcc1 (>= 1:4.1.1), libphonon4 (>= 4:4.2.0), libqt4-dbus (>= 4:4.5.3), libqt4-network (>= 4:4.5.3), libqt4-svg (>= 4:4.5.3), libqt4-webkit (>= 4:4.5.3), libqt4-xml (>= 4:4.5.3), libqtcore4 (>= 4:4.6.1), libqtgui4 (>= 4:4.5.3), libstdc++6 (>= 4.1.1), phonon (>= 4:4.5.2)" )
+    SET( CPACK_DEBIAN_PACKAGE_DEPENDS "libc6 (>= 2.3.6-6~), libc6 (>= 2.1.3), libgcc1 (>= 1:4.1.1), libphonon4 (>= 4:4.2.0), libqt4-dbus (>= 4:4.5.3), libqt4-network (>= 4:4.5.3), libqt4-svg (>= 4:4.5.3), libqtwebkit4 (>= 2.3.4.dfsg-9.1), libqt4-xml (>= 4:4.5.3), libqtcore4 (>= 4:4.6.1), libqtgui4 (>= 4:4.5.3), libstdc++6 (>= 4.1.1), phonon (>= 4:4.5.2)" )
 
     SET( CPACK_DEBIAN_PACKAGE_SECTION "misc" )
     SET( CPACK_DEBIAN_PACKAGE_VERSION "${brewtarget_VERSION_STRING}-1")
@@ -553,7 +541,7 @@ IF(EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
   ELSEIF(WIN32)
     # http://www.thegigsite.com/cmake-2.6.0/CMakeCPackOptions.cmake
     SET( CPACK_GENERATOR "NSIS" )
-   
+
     SET( CPACK_RESOURCE_FILE_LICENSE "${ROOTDIR}/COPYING.GPLv3" )
 
     SET( CPACK_NSIS_PACKAGE_NAME "Brewtarget-${brewtarget_VERSION_STRING}" )
@@ -648,5 +636,3 @@ ELSE()
    MESSAGE( STATUS "Building Brewtarget." )
    ADD_SUBDIRECTORY(${SRCDIR})
 ENDIF()
-
-

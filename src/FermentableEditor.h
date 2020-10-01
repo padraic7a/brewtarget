@@ -43,14 +43,13 @@ class FermentableEditor : public QDialog, private Ui::fermentableEditor
    Q_OBJECT
 
 public:
-   FermentableEditor( QWidget *parent=0 );
+   FermentableEditor( QWidget *parent=nullptr );
    virtual ~FermentableEditor() {}
    void setFermentable( Fermentable* f );
 
 public slots:
    void save();
    void clearAndClose();
-   void changed(QMetaProperty,QVariant);
 
 private:
    Fermentable* obsFerm;
@@ -58,7 +57,7 @@ private:
     *  the fermentable we are watching. If \b metaProp is null,
     *  then update all the UI elements at once.
     */
-   void showChanges(QMetaProperty* metaProp = 0);
+   void showChanges(QMetaProperty* metaProp = nullptr);
 };
 
 #endif   /* _FERMENTABLEEDITOR_H */
