@@ -6,7 +6,7 @@ description: |
     Brewtarget is FREE brewing software, and an open source beer recipe creation tool. It automatically calculates color, bitterness, and more for you while you drag and drop ingredients into the recipe. Brewtarget also has many other tools such as priming sugar calculators, OG correction help, and a unique mash designing tool. It can export and import recipes, allowing you to easily share them with friends. All of this means that Brewtarget is your single, free, go-to tool when crafting your beer recipes.
 #icon:
 grade: devel # must be 'stable' to release into candidate/stable channels
-confinement: devmode # use 'strict' once you have the right plugs and slots
+confinement: strict # use 'strict' once you have the right plugs and slots
 
 apps:
   padraic-brewtarget:
