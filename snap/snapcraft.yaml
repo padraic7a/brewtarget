@@ -34,7 +34,7 @@ parts:
       - bin/*
   my-part:
     # See 'snapcraft plugins'
-    source: https://github.com/padraic7a/brewtarget.git
+    source: .
   #source-branch: devel
     plugin: cmake
     build-packages: [g++, cmake, git, qtbase5-dev, qttools5-dev, qttools5-dev-tools, qtmultimedia5-dev, libqt5sql5-sqlite, libqt5sql5-psql, libqt5svg5-dev, libqt5multimedia5-plugins, doxygen]
