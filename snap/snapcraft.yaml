@@ -22,6 +22,7 @@ apps:
       - wayland
       - x11
       - unity7
+      - opengl
 
 parts:
 # The session-manager-workaround launcher: Silent error messages due to inaccessible paths
@@ -39,6 +40,9 @@ parts:
     plugin: cmake
     build-packages: [g++, cmake, git, qtbase5-dev, qttools5-dev, qttools5-dev-tools, qtmultimedia5-dev, libqt5sql5-sqlite, libqt5sql5-psql, libqt5svg5-dev, libqt5multimedia5-plugins, doxygen]
 
+    configflags:
+      - -DCMAKE_INSTALL_PREFIX=/usr
+      - -DDO_RELEASE_BUILD=ON
     stage-packages:
      - libasyncns0
      - libdouble-conversion1
@@ -71,3 +75,9 @@ parts:
      - libxcb1
      - libxdmcp6
      - sqlitebrowser
+
+layout:
+  /usr/share/brewtarget:
+    symlink: $SNAP/usr/share/brewtarget
+  /usr/share/doc/brewtarget:
+    symlink: $SNAP/usr/share/doc/brewtarget
