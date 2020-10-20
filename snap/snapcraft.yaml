@@ -75,6 +75,7 @@ parts:
      - libxcb1
      - libxdmcp6
      - sqlitebrowser
+     - libqt5svg5
 
 layout:
   /usr/share/brewtarget:
