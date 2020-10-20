@@ -6,7 +6,7 @@ description: |
     Brewtarget is FREE brewing software, and an open source beer recipe creation tool. It automatically calculates color, bitterness, and more for you while you drag and drop ingredients into the recipe. Brewtarget also has many other tools such as priming sugar calculators, OG correction help, and a unique mash designing tool. It can export and import recipes, allowing you to easily share them with friends. All of this means that Brewtarget is your single, free, go-to tool when crafting your beer recipes.
 #icon:
 grade: devel # must be 'stable' to release into candidate/stable channels
-confinement: devmode # use 'strict' once you have the right plugs and slots
+confinement: strict # use 'strict' once you have the right plugs and slots
 
 apps:
   padraic-brewtarget:
@@ -22,6 +22,7 @@ apps:
       - wayland
       - x11
       - unity7
+      - opengl
 
 parts:
 # The session-manager-workaround launcher: Silent error messages due to inaccessible paths
@@ -34,11 +35,14 @@ parts:
       - bin/*
   my-part:
     # See 'snapcraft plugins'
-    source: https://github.com/padraic7a/brewtarget.git
+    source: .
   #source-branch: devel
     plugin: cmake
     build-packages: [g++, cmake, git, qtbase5-dev, qttools5-dev, qttools5-dev-tools, qtmultimedia5-dev, libqt5sql5-sqlite, libqt5sql5-psql, libqt5svg5-dev, libqt5multimedia5-plugins, doxygen]
 
+    configflags:
+      - -DCMAKE_INSTALL_PREFIX=/usr
+      - -DDO_RELEASE_BUILD=ON
     stage-packages:
      - libasyncns0
      - libdouble-conversion1
@@ -71,3 +75,9 @@ parts:
      - libxcb1
      - libxdmcp6
      - sqlitebrowser
+
+layout:
+  /usr/share/brewtarget:
+    symlink: $SNAP/usr/share/brewtarget
+  /usr/share/doc/brewtarget:
+    symlink: $SNAP/usr/share/doc/brewtarget
