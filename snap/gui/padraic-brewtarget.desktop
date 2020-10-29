@@ -1,0 +1,11 @@
+[Desktop Entry]
+Categories=Qt;KDE;Education;Utility;Engineering;
+Exec=padraic-brewtarget
+Name=padraic-brewtarget
+GenericName=Beer calculator
+Keywords=Beer;Ale;Lager;Cider;Brew;Brewing;Recipe;Beersmith;
+X-KDE-StartupNotify=true
+Encoding=UTF-8
+Type=Application
+Terminal=false
+Icon=${SNAP}/meta/gui/padraic-brewtarget.svg
